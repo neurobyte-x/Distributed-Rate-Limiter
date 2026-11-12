@@ -23,6 +23,7 @@ It supports multiple algorithms, scoped rules, and centralized enforcement for m
 	- request limit checks
 - Validation and structured error responses
 - Unit, controller, strategy, and integration tests
+- Next.js web console for policy management, request simulation, and health monitoring
 
 ## Tech Stack
 
@@ -31,6 +32,7 @@ It supports multiple algorithms, scoped rules, and centralized enforcement for m
 - Redis 7.x
 - Maven
 - Testcontainers (integration tests)
+- Next.js 15 + React 19, TypeScript, Tailwind CSS v4, pnpm (console)
 
 ## Project Structure
 
@@ -44,6 +46,7 @@ src/main/java/com/neurobyte/ratelimiter
 	service/        # Business services
 	strategy/       # Rate limiting strategies and factory
 	util/           # Key generation and DTO mapping
+frontend/            # Next.js console (App Router, Tailwind, same-origin API proxy)
 ```
 
 ## Prerequisites
@@ -56,6 +59,7 @@ Choose one run mode:
 	 - Java 21
 	 - Maven 3.9+
 	 - Redis 7+
+	 - Node.js 22+ and pnpm 10+ (for the console)
 
 ## Quick Start (Docker Compose)
 
@@ -67,6 +71,7 @@ docker compose up --build
 
 Services:
 
+- Console: `http://localhost:3000`
 - App: `http://localhost:8080`
 - Redis: `localhost:6379`
 
@@ -81,6 +86,27 @@ To also remove persisted Redis volume:
 ```bash
 docker compose down -v
 ```
+
+## Web Console
+
+The console is a Next.js app in `frontend/`. It covers rule CRUD and live limit checks,
+including single-request evaluation breakdowns and burst tests.
+
+When running the app without Docker:
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+Open `http://localhost:3000`. The console proxies `/api/*` to `BACKEND_URL`
+(default `http://localhost:8080`) from the Next.js server, so no backend CORS
+configuration is required. Set `BACKEND_URL` in `frontend/.env.local` to point at a
+different backend, and restart the dev server.
+
+See [`frontend/README.md`](frontend/README.md) for console features, scripts, and the
+Docker build.
 
 ## Local Run (Without Docker for App)
 
@@ -110,6 +136,7 @@ Environment variables:
 - `SERVER_PORT` (default: `8080`)
 - `REDIS_HOST` (default: `localhost`)
 - `REDIS_PORT` (default: `6379`)
+- `BACKEND_URL` (console only, default: `http://localhost:8080`)
 
 Example:
 
@@ -161,10 +188,16 @@ curl -X POST http://localhost:8080/api/rules \
 		"identifierValue": "10.10.10.10",
 		"refillRatePerSecond": 2.0,
 		"burstCapacity": 10,
+		"limit": 10,
+		"windowSizeSeconds": 1,
 		"endpointPattern": "/api/**",
 		"enabled": true
 	}'
 ```
+
+`limit` and `windowSizeSeconds` are not used by the token bucket algorithm, but bean
+validation requires both to be at least `1`, so send safe values with every token bucket
+payload.
 
 ### 2) List Rules
 
