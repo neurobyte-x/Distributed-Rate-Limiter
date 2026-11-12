@@ -22,5 +22,18 @@ services:
     depends_on:
       - redis
 
+  console:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: distributed-rl-console
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side proxy target. The browser only ever talks to the console.
+      BACKEND_URL: http://app:8080
+    depends_on:
+      - app
+
 volumes:
   redis-data:
